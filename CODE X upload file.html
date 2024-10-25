@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODE X</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: grey;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 1500px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8e7d1;
+            border-radius: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin: 3rem;
+        }
+
+        .chat-header {
+            background-color: #674736;
+            padding: 20px;
+            color: white;
+            text-align: center;
+            font-size: 1.5em;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-box {
+            display: flex;
+            border-top: 1px solid #ccc;
+            padding: 10px;
+
+        }
+
+        .input-box input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            border-radius: 2rem;
+            text-align: center;
+            border: 2px solid #674736;
+        }
+
+        .input-box button {
+            background-color: #674736;
+            color: white;
+            border: none;
+            margin: 5px;
+            padding: 15px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 2rem;
+            width: 85px;
+        }
+
+        .input-box button:hover {
+            background-color: grey;
+        }
+
+        .user-message,
+        .bot-message {
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #674736;
+            color: white;
+            align-self: flex-end;
+            border-radius: 2rem;
+        }
+
+        .bot-message {
+            background-color: #674736;
+            color: rgb(255, 255, 255);
+            align-self: flex-start;
+            border-radius: 2rem;
+
+        }
+
+        .typing {
+            font-style: italic;
+            color: gray;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            CODE X
+        </div>
+        <div id="chatBox" class="chat-box">
+            <!-- Messages will appear here -->
+        </div>
+        <div class="input-box">
+            <input type="text" id="userInput" placeholder="Ask me anything..." autocomplete="off">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+
+        const apiKey = '<replace_your_api_key>'; // Replace with actual API key
+        const externalUserId = '<replace_external_user_id>'; // Replace with actual external user ID
+
+        // Append message to the chat
+        function appendMessage(message, className) {
+            const messageElement = document.createElement('div');
+            messageElement.className = className;
+            messageElement.textContent = message;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Function to call the API
+        async function callChatAPI(query) {
+            const sessionId = await createChatSession(apiKey, externalUserId);
+            const response = await submitQuery(apiKey, sessionId, query);
+            return response.data;
+        }
+
+        // Send user message and get bot response
+        function sendMessage() {
+            const userMessage = userInput.value;
+            if (userMessage.trim() !== '') {
+                appendMessage(userMessage, 'user-message');
+                userInput.value = '';
+
+                // Keywords to trigger the custom response
+                const keywords = ["creator", "finder","found","find", "developer","develop","developed", "made by","made", "origin", "built by", "designed by", "source","inventor","what is your name","what is your name?"];
+
+                // Check if the user message contains any of the keywords
+                if (keywords.some(keyword => userMessage.toLowerCase().includes(keyword))) {
+                    // Custom response for the keywords
+                    const customResponse = "I am made with CODE X.";
+                    appendMessage(customResponse, 'bot-message');
+                    return; // Stop further execution
+                }
+
+                // Show typing indicator
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'typing';
+                typingIndicator.textContent = 'Bot is typing...';
+                chatBox.appendChild(typingIndicator);
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                // Call API to get bot response
+                callChatAPI(userMessage).then(botResponse => {
+                    chatBox.removeChild(typingIndicator);
+
+                    // Extract and append only the "answer" part of the response
+                    const botMessage = botResponse.answer;  // Accessing only the answer part
+                    appendMessage(botMessage, 'bot-message');
+                }).catch(error => {
+                    chatBox.removeChild(typingIndicator);
+                    appendMessage('Sorry, something went wrong.', 'bot-message');
+                    console.error('Error:', error.message); // Log the detailed error message
+                });
+            }
+        }
+
+
+        // Send message when "Enter" is pressed
+        userInput.addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Axios request to create a chat session
+        async function createChatSession(apiKey, externalUserId) {
+            try {
+                const response = await axios.post('https://api.on-demand.io/chat/v1/sessions', {
+                    pluginIds: [],
+                    externalUserId: externalUserId
+                }, {
+                    headers: {
+                        apikey: apiKey
+                    }
+                });
+
+                const sessionId = response.data.data.id;
+                return sessionId;
+            } catch (error) {
+                console.error('Error creating chat session:', error);
+                throw error;
+            }
+        }
+
+        // Axios request to submit query to chat API
+        async function submitQuery(apiKey, sessionId, query) {
+            try {
+                const response = await axios.post(`https://api.on-demand.io/chat/v1/sessions/${sessionId}/query`, {
+                    endpointId: 'predefined-openai-gpt4o',
+                    query: query,
+                    pluginIds: ['plugin-1712327325', 'plugin-1713962163', 'plugin-1728756029'],
+                    responseMode: 'sync'
+                }, {
+                    headers: {
+                        apikey: apiKey
+                    }
+                });
+
+                return response.data;
+            } catch (error) {
+                console.error('Error submitting query:', error);
+                throw error;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
